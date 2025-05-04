@@ -1,0 +1,24 @@
+@hostname = localhost
+@port  = 8080
+@name = "Laszlo"
+@password = "SecretPassword"  
+@email = "laci@example.com"
+
+###
+POST http://{{hostname}}:{{port}}/signup HTTP/1.1
+content-type: application/json
+
+{
+    "name": {{name}},
+    "password": {{password}},
+    "email": {{email}}
+}
+
+###
+POST http://{{hostname}}:{{port}}/login HTTP/1.1
+content-type: application/json
+
+{
+    "password": {{password}},
+    "email": {{email}}
+}
