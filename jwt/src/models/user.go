@@ -9,6 +9,7 @@ type User struct {
 	Name     string `json:"name" gorm:"not null"`         // Display name for user, not unique
 	Password string `json:"password" gorm:"not null"`     // Password
 	Email    string `json:"email" gorm:"unique;not null"` // Unique email
+	Active   bool   `json:"active" gorm:"default:true"`   // Active status
 }
 
 // type User struct {

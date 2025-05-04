@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -18,4 +20,56 @@ func GenerateToken(userEmail string) (string, error) {
 		return "Failed to create token.", err
 	}
 	return tokenString, nil
+}
+
+func ValidateToken(tokenString string) (*jwt.Token, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(os.Getenv("JWTSECRET")), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Validate the token claims
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	// Check if the token is expired
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && claims["exp"] != nil {
+		if exp, ok := claims["exp"].(float64); ok {
+			if time.Unix(int64(exp), 0).Before(time.Now()) {
+				return nil, fmt.Errorf("token expired")
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("token expired")
+	}
+
+	return token, nil
+}
+
+func ValidateAccessLevel(tokenString string, requiredAccessLevel string) (bool, error) {
+	token, err := ValidateToken(tokenString)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if the token has the "accessLevels" claim
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && claims["accessLevels"] != nil {
+		if accessLevels, ok := claims["accessLevels"].(string); ok {
+			// Split the access levels into a slice
+			levels := strings.Split(accessLevels, ",")
+			// Check if the required access level is in the slice
+			for _, level := range levels {
+				if strings.TrimSpace(level) == requiredAccessLevel {
+					return true, nil
+				}
+			}
+		}
+	}
+
+	return false, fmt.Errorf("access denied: required access level '%s' not found", requiredAccessLevel)
 }

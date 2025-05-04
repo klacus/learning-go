@@ -2,9 +2,15 @@
 @port  = 8080
 @name = "Laszlo"
 @password = "SecretPassword"  
-@email = "laci@example.com"
+@email = "laszlo@example.com"
+
+@name2 = "Laci"
+@password2 = "VerySecretPassword"  
+@email2 = "laci@example.com"
+
 
 ###
+# Sign up with the first user
 POST http://{{hostname}}:{{port}}/signup HTTP/1.1
 content-type: application/json
 
@@ -15,6 +21,18 @@ content-type: application/json
 }
 
 ###
+# Sign up with the second user
+POST http://{{hostname}}:{{port}}/signup HTTP/1.1
+content-type: application/json
+
+{
+    "name": {{name2}},
+    "password": {{password2}},
+    "email": {{email2}}
+}
+
+###
+# Login with the first user
 POST http://{{hostname}}:{{port}}/login HTTP/1.1
 content-type: application/json
 
@@ -22,3 +40,17 @@ content-type: application/json
     "password": {{password}},
     "email": {{email}}
 }
+
+###
+# Login with the second user
+POST http://{{hostname}}:{{port}}/login HTTP/1.1
+content-type: application/json
+
+{
+    "password": {{password2}},
+    "email": {{email2}}
+}
+
+###
+# Logout
+DELETE http://{{hostname}}:{{port}}/logout HTTP/1.1
