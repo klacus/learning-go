@@ -1,7 +1,7 @@
 package routes
 
 import (
-	middleware "jwt/middlewares"
+	"jwt/middlewares"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,17 +14,17 @@ import (
 
 func ApiThree(c *gin.Context, logger *zerolog.Logger) {
 	c.JSON(http.StatusOK, gin.H{
-		"message": "API 2. Authentication required.",
+		"message": "API 3 Success. Authentication and Authorization required with level1 access.",
 	})
 }
 
 func RegisterAPI3Route(router *gin.Engine, database *gorm.DB, logger *zerolog.Logger) {
 	router.GET("/apithree",
 		func(c *gin.Context) {
-			middleware.RequireAuthentication(c, database)
+			middlewares.RequireAuthentication(c, database)
 		},
 		func(c *gin.Context) {
-			middleware.RequireAuthentication(c, database)
+			middlewares.RequireAuthorization(c, "level1")
 		},
 		func(c *gin.Context) {
 			ApiThree(c, logger)

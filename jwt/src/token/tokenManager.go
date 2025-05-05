@@ -1,9 +1,8 @@
-package auth
+package token
 
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -59,27 +58,4 @@ func ValidateToken(tokenString string) (*jwt.Token, error) {
 	}
 
 	return token, nil
-}
-
-func ValidateAccessLevel(tokenString string, requiredAccessLevel string) (bool, error) {
-	token, err := ValidateToken(tokenString)
-	if err != nil {
-		return false, err
-	}
-
-	// Check if the token has the "accessLevels" claim
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && claims["accessLevels"] != nil {
-		if accessLevels, ok := claims["accessLevels"].(string); ok {
-			// Split the access levels into a slice
-			levels := strings.Split(accessLevels, ",")
-			// Check if the required access level is in the slice
-			for _, level := range levels {
-				if strings.TrimSpace(level) == requiredAccessLevel {
-					return true, nil
-				}
-			}
-		}
-	}
-
-	return false, fmt.Errorf("access denied: required access level '%s' not found", requiredAccessLevel)
 }

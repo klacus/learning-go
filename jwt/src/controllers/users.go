@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"jwt/auth"
 	"jwt/models"
+	"jwt/token"
 	"net/http"
 	"os"
 	"time"
@@ -51,7 +51,7 @@ func Signup(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 	}
 
 	// Generate a JWT token
-	token, err := auth.GenerateToken(user.Email)
+	token, err := token.GenerateToken(user.Email)
 	if err != nil {
 		logger.Error().Msgf("Error generating token: %s", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error."})
@@ -114,7 +114,7 @@ func Login(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 	if len(accessLevelsString) > 0 {
 		accessLevelsString = accessLevelsString[:len(accessLevelsString)-1] // Remove the last comma
 	}
-	claims := auth.Claims{
+	claims := token.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:  os.Getenv("JWTISSUER"),
 			Subject: user.Email,
@@ -125,7 +125,7 @@ func Login(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 		},
 		AccessLevels: accessLevelsString,
 	}
-	token, err := auth.GenerateTokenWithClaims(claims)
+	token, err := token.GenerateTokenWithClaims(claims)
 	if err != nil {
 		logger.Error().Msgf("Error generating token: %s", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error."})
@@ -133,7 +133,7 @@ func Login(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 	}
 
 	// // Generate a JWT token
-	// token, err := auth.GenerateToken(user.Email)
+	// token, err := middlewares.GenerateToken(user.Email)
 	// if err != nil {
 	// 	logger.Error().Msgf("Error generating token: %s", err)
 	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error."})

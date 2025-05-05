@@ -29,6 +29,8 @@ func (apiServer *ApiServer) Start() error {
 	routes.RegisterLogoutRoute(apiServer.router)
 	routes.RegisterAPI1Route(apiServer.router, &logger)
 	routes.RegisterAPI2Route(apiServer.router, database, &logger)
+	routes.RegisterAPI3Route(apiServer.router, database, &logger)
+	routes.RegisterAPI4Route(apiServer.router, database, &logger)
 
 	// Log server start
 	logger.Info().Msgf("Server started on address %s", apiServer.listenAddress)
