@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"jwt/initializers"
-	"jwt/models"
 	"os"
 
 	"github.com/rs/zerolog"
@@ -22,11 +21,8 @@ func init() {
 		logger.Error().Msgf("Error connecting to database for schema synchronization: %s", err)
 		return
 	}
-	database.AutoMigrate(&models.User{})
-	if err != nil {
-		logger.Error().Msgf("Error migrating database schema: %s", err)
-		return
-	}
+
+	initializers.SyncDatabase(database, &logger)
 }
 
 func main() {

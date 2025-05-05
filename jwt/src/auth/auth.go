@@ -9,6 +9,11 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+type Claims struct {
+	AccessLevels string `json:"accessLevels"`
+	jwt.RegisteredClaims
+}
+
 func GenerateToken(userEmail string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": userEmail,
@@ -20,6 +25,11 @@ func GenerateToken(userEmail string) (string, error) {
 		return "Failed to create token.", err
 	}
 	return tokenString, nil
+}
+
+func GenerateTokenWithClaims(claims Claims) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(os.Getenv("JWTSECRET")))
 }
 
 func ValidateToken(tokenString string) (*jwt.Token, error) {
