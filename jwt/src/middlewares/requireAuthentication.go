@@ -6,25 +6,36 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
 	"gorm.io/gorm"
 )
 
 func RequireAuthentication(c *gin.Context, database *gorm.DB) {
-	tokenString, err := c.Cookie("Authorization")
+	authorizationHeader := c.GetHeader("authorization")
+	if authorizationHeader == "" {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	tokenString, err := token.GetBearerToken(authorizationHeader)
 	if err != nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	token, err := token.ValidateToken(tokenString)
+	jwtToken, err := token.ValidateToken(tokenString)
+	if err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	email, err := token.GetUserEmailFromToken(jwtToken)
 	if err != nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
 	// find user
-	user, err := controllers.GetUserByEmail(token.Claims.(jwt.MapClaims)["sub"].(string), database)
+	user, err := controllers.GetUserByEmail(email, database)
 	if err != nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return

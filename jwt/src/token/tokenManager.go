@@ -3,6 +3,7 @@ package token
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -58,4 +59,39 @@ func ValidateToken(tokenString string) (*jwt.Token, error) {
 	}
 
 	return token, nil
+}
+
+func GetBearerToken(authorizationHeader string) (string, error) {
+	if len(authorizationHeader) <= 0 {
+		return "", fmt.Errorf("authorization header is empty")
+	}
+	bearerToken := (strings.Split(authorizationHeader, "Bearer "))[1]
+	if len(bearerToken) <= 0 {
+		return "", fmt.Errorf("bearer token is empty")
+	}
+	return bearerToken, nil
+}
+
+func GetUserEmailFromToken(token *jwt.Token) (string, error) {
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", fmt.Errorf("failed to extract claims from token")
+	}
+	email, ok := claims["sub"].(string)
+	if !ok {
+		return "", fmt.Errorf("failed to extract email from token claims")
+	}
+	return email, nil
+}
+
+func GetAccessLevelsFromToken(token *jwt.Token) (string, error) {
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", fmt.Errorf("failed to extract claims from token")
+	}
+	accessLevels, ok := claims["accessLevels"].(string)
+	if !ok {
+		return "", fmt.Errorf("failed to extract access levels from token claims")
+	}
+	return accessLevels, nil
 }
