@@ -58,8 +58,7 @@ func Signup(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 		return
 	}
 
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("Authorization", token, 3600*24*30, "", "", false, true) // Set the cookie with the token
+	c.Header("Authorization", "Bearer "+token) // Set the Authorization header with the token
 	// Return the token to the client
 	c.JSON(http.StatusOK, gin.H{"message": "User registered successfully."})
 }
@@ -139,16 +138,13 @@ func Login(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error."})
 	// 	return
 	// }
-
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("Authorization", token, 3600*24*30, "", "", false, true) // Set the cookie with the token
+	c.Header("Authorization", "Bearer "+token) // Set the Authorization header with the token
 	// Return the token to the client
 	c.JSON(http.StatusOK, gin.H{"message": "User login successful."})
 }
 
 func Logout(c *gin.Context) {
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("Authorization", "", -1, "", "", false, true) // Clear the cookie by setting MaxAge to negative value, works with non synchronized clocks also
+	c.Header("Authorization", "") // Remove the Authorization header
 	c.JSON(http.StatusOK, gin.H{"message": "User logged out successfully."})
 }
 
