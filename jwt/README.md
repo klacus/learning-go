@@ -14,4 +14,4 @@ JWTISSUER the issuer string for the JWT tokens
 
 # Requirements
 sqlite command line tool installed
-DB Browser for SQLite installed
+DB Browser for SQLite installed, to manipulate data directly in the tables if needed
