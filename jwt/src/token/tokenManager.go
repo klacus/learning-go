@@ -10,11 +10,11 @@ import (
 )
 
 type Claims struct {
-	AccessLevels string `json:"accessLevels"`
 	jwt.RegisteredClaims
+	AccessLevels string `json:"accessLevels"`
 }
 
-func GenerateToken(userEmail string) (string, error) {
+func GenerateTokenFromEmail(userEmail string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": userEmail,
 		"nbf": time.Now().Unix(),
@@ -47,6 +47,22 @@ func ValidateToken(tokenString string) (*jwt.Token, error) {
 		return nil, fmt.Errorf("invalid token")
 	}
 
+	// Check if the token is signed with the correct algorithm
+	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+	}
+
+	// Check if the token is not before the current time
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && claims["nbf"] != nil {
+		if nbf, ok := claims["nbf"].(float64); ok {
+			if time.Unix(int64(nbf), 0).After(time.Now()) {
+				return nil, fmt.Errorf("token not valid yet")
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("token not valid yet")
+	}
+
 	// Check if the token is expired
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && claims["exp"] != nil {
 		if exp, ok := claims["exp"].(float64); ok {
@@ -58,6 +74,28 @@ func ValidateToken(tokenString string) (*jwt.Token, error) {
 		return nil, fmt.Errorf("token expired")
 	}
 
+	// Check if the token is for the correct audience
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && claims["aud"] != nil {
+		if aud, ok := claims["aud"].(string); ok {
+			if aud != os.Getenv("JWTAUDIENCE") {
+				return nil, fmt.Errorf("token audience mismatch")
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("token audience mismatch")
+	}
+
+	// Check if the token is for the correct issuer
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && claims["iss"] != nil {
+		if iss, ok := claims["iss"].(string); ok {
+			if iss != os.Getenv("JWTISSUER") {
+				return nil, fmt.Errorf("token issuer mismatch")
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("token issuer mismatch")
+	}
+
 	return token, nil
 }
 
@@ -65,6 +103,14 @@ func GetBearerToken(authorizationHeader string) (string, error) {
 	if len(authorizationHeader) <= 0 {
 		return "", fmt.Errorf("authorization header is empty")
 	}
+	headerArray := strings.Split(authorizationHeader, " ")
+	if len(headerArray) != 2 {
+		return "", fmt.Errorf("invalid authorization header format")
+	}
+	if headerArray[0] != "Bearer" {
+		return "", fmt.Errorf("invalid authorization header format")
+	}
+
 	bearerToken := (strings.Split(authorizationHeader, "Bearer "))[1]
 	if len(bearerToken) <= 0 {
 		return "", fmt.Errorf("bearer token is empty")

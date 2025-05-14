@@ -51,7 +51,7 @@ func Signup(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 	}
 
 	// Generate a JWT token
-	token, err := token.GenerateToken(user.Email)
+	token, err := NewUserToken(user.Email, database, logger)
 	if err != nil {
 		logger.Error().Msgf("Error generating token: %s", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error."})
@@ -78,9 +78,14 @@ func Login(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 	}
 
 	// Get user by email
-	var existingUser models.User
-	if err := database.First(&existingUser, "email = ?", user.Email).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Email or password invalid."}) // Do not return what components of the credential was invalid to avoid leaking information.
+	existingUser, err := GetUserByEmail(user.Email, database)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Email or password invalid."}) // Do not return what components of the credential was invalid to avoid leaking information.
+			return
+		}
+		logger.Error().Msgf("Error getting user by email: %s", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error."})
 		return
 	}
 
@@ -96,16 +101,22 @@ func Login(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 		return
 	}
 
-	// Get access levels
-	accessLevels := []models.AccessLevel{}
-	if err := database.Model(&existingUser).Association("AccessLevels").Find(&accessLevels); err != nil {
-		logger.Error().Msgf("Error getting access levels: %s", err)
+	// Generate a JWT token
+	token, err := NewUserToken(user.Email, database, logger)
+	if err != nil {
+		logger.Error().Msgf("Error generating token: %s", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error."})
 		return
 	}
 
-	// ADD ACCESS LEVELS TO THE JWT TOKEN
-	// Generate a JWT token with access levels
+	// Set the Authorization header with the token
+	c.Header("Authorization", "Bearer "+token) // Set the Authorization header with the token
+
+	// Return the token to the client
+	c.JSON(http.StatusOK, gin.H{"message": "User login successful."})
+}
+
+func GetUserAccessLevelsString(accessLevels []models.AccessLevel) string {
 	accessLevelsString := ""
 	for _, accessLevel := range accessLevels {
 		accessLevelsString += accessLevel.Name + ","
@@ -113,36 +124,14 @@ func Login(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 	if len(accessLevelsString) > 0 {
 		accessLevelsString = accessLevelsString[:len(accessLevelsString)-1] // Remove the last comma
 	}
-	claims := token.Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:  os.Getenv("JWTISSUER"),
-			Subject: user.Email,
-			// Audience:  []string{"your-app-audience"},
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 30)),
-		},
-		AccessLevels: accessLevelsString,
-	}
-	token, err := token.GenerateTokenWithClaims(claims)
-	if err != nil {
-		logger.Error().Msgf("Error generating token: %s", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error."})
-		return
-	}
-
-	// // Generate a JWT token
-	// token, err := middlewares.GenerateToken(user.Email)
-	// if err != nil {
-	// 	logger.Error().Msgf("Error generating token: %s", err)
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error."})
-	// 	return
-	// }
-	c.Header("Authorization", "Bearer "+token) // Set the Authorization header with the token
-	// Return the token to the client
-	c.JSON(http.StatusOK, gin.H{"message": "User login successful."})
+	return accessLevelsString
 }
 
+// Logout function to remove the Authorization header
+// This is a placeholder function. In a real application, you would handle logout differently.
+// For example, you might want to invalidate the token on the server side or remove it from the client.
+// In this case, we are just removing the Authorization header from the response.
+// In a real application, you would also want to handle token revocation.
 func Logout(c *gin.Context) {
 	c.Header("Authorization", "") // Remove the Authorization header
 	c.JSON(http.StatusOK, gin.H{"message": "User logged out successfully."})
@@ -154,4 +143,50 @@ func GetUserByEmail(email string, database *gorm.DB) (*models.User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func GetUserAccessLevels(email string, database *gorm.DB) ([]models.AccessLevel, error) {
+	var user models.User
+	if err := database.Preload("AccessLevels").Find(&user, "email = ?", email).Error; err != nil {
+		return nil, err
+	}
+	return user.AccessLevels, nil
+}
+
+func NewUserToken(email string, database *gorm.DB, logger *zerolog.Logger) (string, error) {
+	// Get user by email
+	user, err := GetUserByEmail(email, database)
+	if err != nil {
+		logger.Error().Msgf("Error getting user by email: %s", err)
+		return "", err
+	}
+
+	// Get user access levels
+	accessLevels, err := GetUserAccessLevels(user.Email, database)
+	if err != nil {
+		logger.Error().Msgf("Error getting user access levels: %s", err)
+		return "", err
+	}
+
+	// Set up the claims for the token
+	claims := token.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    os.Getenv("JWTISSUER"),
+			Subject:   user.Email,
+			Audience:  []string{os.Getenv("JWTAUDIENCE")},
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 30)),
+		},
+		AccessLevels: GetUserAccessLevelsString(accessLevels),
+	}
+
+	// Generate the token with claims
+	token, err := token.GenerateTokenWithClaims(claims)
+	if err != nil {
+		logger.Error().Msgf("Error generating token: %s", err)
+		return "", err
+	}
+
+	return token, nil
 }

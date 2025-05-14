@@ -21,7 +21,7 @@ func ApiTwo(c *gin.Context, logger *zerolog.Logger) {
 func RegisterAPI2Route(router *gin.Engine, database *gorm.DB, logger *zerolog.Logger) {
 	router.GET("/apitwo",
 		func(c *gin.Context) {
-			middleware.RequireAuthentication(c, database)
+			middleware.RequireAuthentication(c, database, logger)
 		},
 		func(c *gin.Context) {
 			ApiTwo(c, logger)

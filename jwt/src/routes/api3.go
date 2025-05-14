@@ -21,10 +21,10 @@ func ApiThree(c *gin.Context, logger *zerolog.Logger) {
 func RegisterAPI3Route(router *gin.Engine, database *gorm.DB, logger *zerolog.Logger) {
 	router.GET("/apithree",
 		func(c *gin.Context) {
-			middlewares.RequireAuthentication(c, database)
+			middlewares.RequireAuthentication(c, database, logger)
 		},
 		func(c *gin.Context) {
-			middlewares.RequireAuthorization(c, "level1")
+			middlewares.RequireAuthorization(c, "level1", logger)
 		},
 		func(c *gin.Context) {
 			ApiThree(c, logger)

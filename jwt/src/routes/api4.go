@@ -21,10 +21,10 @@ func ApiFour(c *gin.Context, logger *zerolog.Logger) {
 func RegisterAPI4Route(router *gin.Engine, database *gorm.DB, logger *zerolog.Logger) {
 	router.GET("/apifour",
 		func(c *gin.Context) {
-			middlewares.RequireAuthentication(c, database)
+			middlewares.RequireAuthentication(c, database, logger)
 		},
 		func(c *gin.Context) {
-			middlewares.RequireAuthorization(c, "level2")
+			middlewares.RequireAuthorization(c, "level2", logger)
 		},
 		func(c *gin.Context) {
 			ApiFour(c, logger)

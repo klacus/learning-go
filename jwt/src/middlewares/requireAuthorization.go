@@ -6,23 +6,27 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 )
 
-func RequireAuthorization(c *gin.Context, requiredAccessLevel string) {
+func RequireAuthorization(c *gin.Context, requiredAccessLevel string, logger *zerolog.Logger) {
 	authorizationHeader := c.GetHeader("authorization")
 	if authorizationHeader == "" {
+		logger.Error().Msg("Authorization header is missing")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
 	tokenString, err := token.GetBearerToken(authorizationHeader)
 	if err != nil {
+		logger.Error().Err(err).Msg("Failed to get bearer token")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
 	jwtToken, err := token.ValidateToken(tokenString)
 	if err != nil {
+		logger.Error().Err(err).Msg("Failed to validate token")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -30,6 +34,7 @@ func RequireAuthorization(c *gin.Context, requiredAccessLevel string) {
 	// Check if the token has the "accessLevels" claim
 	accessLevels, err := token.GetAccessLevelsFromToken(jwtToken)
 	if err != nil {
+		logger.Error().Err(err).Msg("Failed to get access levels from token")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -40,8 +45,10 @@ func RequireAuthorization(c *gin.Context, requiredAccessLevel string) {
 	for _, level := range levels {
 		if strings.TrimSpace(level) == requiredAccessLevel {
 			c.Next()
+			return
 		}
 	}
-	c.AbortWithStatus(http.StatusForbidden)
 
+	// The default should be to return a forbidden status to avoid a bug granting access.
+	c.AbortWithStatus(http.StatusForbidden)
 }
