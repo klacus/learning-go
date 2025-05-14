@@ -13,6 +13,7 @@ import (
 func RequireAuthentication(c *gin.Context, database *gorm.DB, logger *zerolog.Logger) {
 	authorizationHeader := c.GetHeader("authorization")
 	if authorizationHeader == "" {
+		logger.Error().Msg("Authorization header is missing")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
