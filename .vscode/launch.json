@@ -7,7 +7,7 @@
     {
       "name": "Go Debug Current Module",
       "type": "go",
-      "request": "launch",
+      "request": "run",
       "mode": "auto",
       "program": "${fileDirname}"
     }
